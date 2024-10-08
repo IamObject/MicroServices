@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: eureka
+spec:
+  selector:
+    matchLabels:
+      app: eureka
+  serviceName: "eureka"  #access using eureka-0 as it is statefullset
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: eureka
+    spec:
+      containers:
+      - name: eureka
+        image: sumitrokade/iod:serviceregistry
+        imagePullPolicy: Always
+        ports:
+         - containerPort: 8761
+        #   name: web
+        # volumeMounts:
+        # - name: www
+        #   mountPath: /usr/share/nginx/html
+  # volumeClaimTemplates:
+  # - metadata:
+  #     name: www
+  #   spec:
+  #     accessModes: [ "ReadWriteOnce" ]
+  #     resources:
+  #       requests:
+  #         storage: 1Gi
+
+---
+# used internally to connect for the application 
+apiVersion: v1
+kind: Service
+metadata:
+  name: eureka
+spec:
+  clusterIP: None # make this service as headless service
+  #this is internel servcie as headless service which will give a stiky identity to connect to other app or other apss will connect to it
+  selector:
+    app: eureka
+  ports:
+  - port: 8761
+    name: eureka
+    # targetPort: <Target Port>
+
+
+---
+#for external traffic
+#if we want to access this service registry outside of k8s cluster we need load balancer or nodeport service
+#that can be exposed out side of k8s as well and which can connect to 8761 port of this statefullset
+apiVersion: v1
+kind: Service
+metadata:
+  name: eureka-lb
+spec:
+  type: NodePort
+  selector:
+    app: eureka
+  ports:
+  - port: 80
+    targetPort: 8761

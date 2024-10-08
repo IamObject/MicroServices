@@ -1,0 +1,47 @@
+version: '3'
+services:
+  serviceregistry:    #same name as image name
+    image: 'iod/serviceregistry:0.0.1'  # add tag info copy from docker image
+    container_name: 'serviceregistry'
+    ports:
+      - '8761:8761' #may be multiple ports
+  configserver:    #same name as image name
+    image: 'iod/configserver:latest'  # add tag info copy from docker image
+    container_name: 'configserver'
+    ports:
+      - '9296:9296'
+    depends_on:
+      - serviceregistry   #config server depends on service registry
+    environment:
+      - EUREKA_SERVER_ADDRESS=http://serviceregistry:8761/eureka
+    healthcheck:
+      test: ["CMD","curl","-f","http://configserver:9296/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+      #- EUREKA_SERVER_ADDRESS=http://host.docker.internal:8761/eureka
+
+
+      #start the service and create one network as well
+      #all service will be in same network
+      #so we can refer with service name
+  cloudgateway: 
+    image: 'iod/cloudgateway:latest'
+    container_name: 'cloudgateway'
+    ports:
+      - '9091:9091'
+    depends_on: # do not wait till service completly up for that need to implement health check
+      #- configserver    #cloud gateway is depend on config server
+      configserver:
+          condition: service_healthy
+
+    environment:
+      - EUREKA_SERVER_ADDRESS=http://serviceregistry:8761/eureka
+      - CONFIG_SERVER_URL=configserver
+
+ #start the service and create one network as well
+ #all service will be in same network
+ #so we can refer with service name
+ #config server depends on service registry
+ #cloud gateway is depend on config server
